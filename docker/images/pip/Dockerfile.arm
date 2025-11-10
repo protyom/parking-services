@@ -1,0 +1,9 @@
+FROM protyom/parking-monitoring:os_arm
+
+WORKDIR /app/
+COPY pyproject.toml /app/
+
+
+RUN uv pip install --system --no-cache-dir torch torchvision --index-url https://download.pytorch.org/whl/cpu && \
+    uv pip install --system --no-cache-dir -e ".[orangepi,django]" && \
+    uv cache clean

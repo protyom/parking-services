@@ -1,0 +1,1 @@
+celery -A parking_services worker -E -l INFO --concurrency=4

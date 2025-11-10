@@ -1,0 +1,29 @@
+services:
+
+    celerybeat:
+      image: ${APP_IMAGE}
+      restart: always
+      volumes:
+        - ${PWD}/yolov8x.pt:/app/yolov8x.pt
+      env_file:
+        - .env
+      environment:
+        - C_FORCE_ROOT=true
+        - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:5432/${POSTGRES_DB}
+      command: /bin/sh /app/bin/run_beat.sh
+
+    celery:
+      depends_on:
+        - celerybeat
+      image: ${APP_IMAGE}
+      restart: always
+      volumes:
+        - ${PWD}/yolov8x.pt:/app/yolov8x.pt
+      env_file:
+        - .env
+      environment:
+        - C_FORCE_ROOT=true
+        - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:5432/${POSTGRES_DB}
+      network_mode: "host"
+
+      command: celery -A parking_services worker -E -l INFO --concurrency=4

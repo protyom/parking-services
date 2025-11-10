@@ -1,0 +1,78 @@
+version: '2.3'
+
+services:
+
+    db_postgres:
+        image: postgres:16
+        restart: always
+        ports:
+            - ${POSTGRES_PORT}:5432
+        environment:
+            - POSTGRES_USER=${POSTGRES_USER}
+            - POSTGRES_DB=${POSTGRES_DB}
+            - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+        volumes:
+            - pgdata:/var/lib/postgresql/data
+
+    web:
+        depends_on:
+            - db_postgres
+        image: ${APP_IMAGE}
+        restart: always
+        volumes:
+            - web-static:/app/parking_services/static/
+        env_file:
+            - .env
+        environment:
+            - C_FORCE_ROOT=true
+            - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db_postgres:5432/${POSTGRES_DB}
+        command: /bin/sh /app/bin/app-uwsgi-server.sh
+
+    redis:
+        image: redis
+        restart: always
+        ports:
+          - 6379:6379
+        command: redis-server --requirepass ${REDIS_PASSWORD}
+        volumes:
+            - redisdata:/data
+    
+    nginx:
+        image: nginx
+        links:
+          - web
+        volumes:
+          - web-static:/web_static/
+          - ./configs/nginx/conf.d/app.conf:/etc/nginx/conf.d/app.conf
+        environment:
+          - HTTPS_METHOD=redirect
+          - VIRTUAL_HOST=carparkhome.by
+          - LETSENCRYPT_HOST=carparkhome.by
+          - LETSENCRYPT_EMAIL=protyom@gmail.com
+    nginx-proxy:
+        image: nginxproxy/nginx-proxy
+        container_name: nginx-proxy
+        ports:
+          - 80:80
+          - 443:443
+        volumes:
+          - ./configs/nginx/conf.d/custom_proxy_settings.conf:/etc/nginx/conf.d/custom_proxy_settings.conf
+          - ./configs/nginx/vhost.d:/etc/nginx/vhost.d
+          - ./configs/nginx/html:/usr/share/nginx/html
+          - ./configs/nginx/certs:/etc/nginx/certs
+          - /var/run/docker.sock:/tmp/docker.sock:ro
+
+    acme-companion:
+        image: nginxproxy/acme-companion
+        container_name: nginx-proxy-acme
+        volumes:
+          - ./configs/nginx/certs:/etc/nginx/certs:rw
+          - ./configs/nginx/acme:/etc/acme.sh
+          - /var/run/docker.sock:/var/run/docker.sock:ro
+        volumes_from:
+          - nginx-proxy
+
+volumes:
+    pgdata:
+    redisdata:
+    web-static:

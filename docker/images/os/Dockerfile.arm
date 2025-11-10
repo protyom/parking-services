@@ -1,0 +1,16 @@
+FROM python:3.12-bookworm
+
+LABEL maintainer="protyom"
+
+RUN apt-get update && \
+    apt-get install \
+    libgl1 \
+    libgeos++-dev \
+    libproj-dev \
+    libghc-persistent-postgresql-dev \
+    -y
+
+
+RUN pip3 install --upgrade pip
+RUN pip3 install uwsgi
+RUN pip3 install uv

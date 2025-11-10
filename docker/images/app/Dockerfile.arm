@@ -1,0 +1,3 @@
+FROM protyom/parking-monitoring:pip_arm
+
+COPY . /app/
