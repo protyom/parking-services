@@ -66,18 +66,6 @@ RUN pip3 install uv
 **ARM (Dockerfile.arm)**:
 Same as x86_64 - base dependencies are architecture-independent.
 
-**Build Command**:
-```bash
-# x86_64
-docker build -t protyom/parking-monitoring:os \
-  -f docker/images/os/Dockerfile \
-  docker/images/os/
-
-# ARM (on ARM device or with buildx)
-docker build -t protyom/parking-monitoring:os_arm \
-  -f docker/images/os/Dockerfile.arm \
-  docker/images/os/
-```
 
 ### Layer 2: Python Dependencies (`docker/images/pip/`)
 
@@ -110,18 +98,6 @@ RUN uv pip install --system --no-cache-dir torch torchvision --index-url https:/
 - Optimized for ARM embedded devices (OrangePi, Raspberry Pi)
 - opencv-python-headless instead of full OpenCV
 
-**Build Command**:
-```bash
-# x86_64
-docker build -t protyom/parking-monitoring:pip \
-  -f docker/images/pip/Dockerfile \
-  .
-
-# ARM
-docker build -t protyom/parking-monitoring:pip_arm \
-  -f docker/images/pip/Dockerfile.arm \
-  .
-```
 
 ### Layer 3: Application Code (`docker/images/app/`)
 
@@ -139,96 +115,140 @@ FROM protyom/parking-monitoring:pip_arm
 COPY . /app/
 ```
 
-**Build Command**:
-```bash
-# x86_64
-docker build -t protyom/parking-monitoring:app \
-  -f docker/images/app/Dockerfile \
-  .
-
-# ARM
-docker build -t protyom/parking-monitoring:app_arm \
-  -f docker/images/app/Dockerfile.arm \
-  .
-```
 
 ## Building Images
 
-### Complete Build Workflow
+All images must be built using **Docker Buildx** with explicit platform specification. Standard `docker build` does not support platform selection.
 
-#### x86_64 Server Build
+### Prerequisites
 
+1. **Docker Buildx** (included in Docker Desktop 19.03+)
+
+2. **Create buildx builder** (one-time setup):
 ```bash
-# 1. Build OS layer
-docker build -t protyom/parking-monitoring:os \
-  -f docker/images/os/Dockerfile \
-  docker/images/os/
-
-# 2. Build PIP layer (requires pyproject.toml)
-docker build -t protyom/parking-monitoring:pip \
-  -f docker/images/pip/Dockerfile \
-  .
-
-# 3. Build APP layer (requires full source)
-docker build -t protyom/parking-monitoring:app \
-  -f docker/images/app/Dockerfile \
-  .
-
-# Tag final image
-docker tag protyom/parking-monitoring:app protyom/parking-monitoring:latest
-```
-
-#### ARM Embedded Build
-
-```bash
-# 1. Build OS layer (on ARM device)
-docker build -t protyom/parking-monitoring:os_arm \
-  -f docker/images/os/Dockerfile.arm \
-  docker/images/os/
-
-# 2. Build PIP layer
-docker build -t protyom/parking-monitoring:pip_arm \
-  -f docker/images/pip/Dockerfile.arm \
-  .
-
-# 3. Build APP layer
-docker build -t protyom/parking-monitoring:app_arm \
-  -f docker/images/app/Dockerfile.arm \
-  .
-```
-
-#### Cross-Platform Build with Docker Buildx
-
-For building ARM images on x86_64 host:
-
-```bash
-# Create buildx builder (one time)
 docker buildx create --name multiarch --use
 docker buildx inspect --bootstrap
+```
 
-# Build for multiple architectures
-docker buildx build --platform linux/arm64 \
+3. **Enable QEMU** for cross-platform emulation (if building ARM on x86_64):
+```bash
+docker run --privileged --rm tonistiigi/binfmt --install all
+```
+
+### Building x86_64 Images
+
+Build all layers for x86_64/amd64 platform:
+
+#### Layer 1: OS Base
+```bash
+docker buildx build \
+  --platform linux/amd64 \
+  -t protyom/parking-monitoring:os \
+  -f docker/images/os/Dockerfile \
+  --push \
+  docker/images/os/
+```
+
+To load locally instead of pushing:
+```bash
+docker buildx build \
+  --platform linux/amd64 \
+  -t protyom/parking-monitoring:os \
+  -f docker/images/os/Dockerfile \
+  --load \
+  docker/images/os/
+```
+
+#### Layer 2: PIP Dependencies
+```bash
+docker buildx build \
+  --platform linux/amd64 \
+  -t protyom/parking-monitoring:pip \
+  -f docker/images/pip/Dockerfile \
+  --push \
+  .
+```
+
+#### Layer 3: Application
+```bash
+docker buildx build \
+  --platform linux/amd64 \
+  -t protyom/parking-monitoring:app \
+  -t protyom/parking-monitoring:latest \
+  -f docker/images/app/Dockerfile \
+  --push \
+  .
+```
+
+### Building ARM Images
+
+Build all layers for ARM64 platform:
+
+#### Layer 1: OS Base
+```bash
+docker buildx build \
+  --platform linux/arm64 \
+  -t protyom/parking-monitoring:os_arm \
+  -f docker/images/os/Dockerfile.arm \
+  --push \
+  docker/images/os/
+```
+
+To load locally instead of pushing (on ARM device):
+```bash
+docker buildx build \
+  --platform linux/arm64 \
   -t protyom/parking-monitoring:os_arm \
   -f docker/images/os/Dockerfile.arm \
   --load \
   docker/images/os/
-
-# Continue with pip and app layers...
 ```
 
-### Pushing to Registry
-
+#### Layer 2: PIP Dependencies
 ```bash
-# Push x86_64 images
-docker push protyom/parking-monitoring:os
-docker push protyom/parking-monitoring:pip
-docker push protyom/parking-monitoring:app
-
-# Push ARM images
-docker push protyom/parking-monitoring:os_arm
-docker push protyom/parking-monitoring:pip_arm
-docker push protyom/parking-monitoring:app_arm
+docker buildx build \
+  --platform linux/arm64 \
+  -t protyom/parking-monitoring:pip_arm \
+  -f docker/images/pip/Dockerfile.arm \
+  --push \
+  .
 ```
+
+#### Layer 3: Application
+```bash
+docker buildx build \
+  --platform linux/arm64 \
+  -t protyom/parking-monitoring:app_arm \
+  -f docker/images/app/Dockerfile.arm \
+  --push \
+  .
+```
+
+### Automated Build Scripts
+
+**Build all x86_64 images:**
+
+Use the provided `build-x86.sh` script:
+```bash
+bash build-x86.sh
+```
+
+**Build all ARM images:**
+
+Use the provided `build-arm.sh` script:
+```bash
+bash build-arm.sh
+```
+
+These scripts handle all three layers automatically, including builder setup and QEMU installation for ARM cross-compilation.
+
+### Notes
+
+- **`--push` vs `--load`**: Use `--push` to push directly to registry, or `--load` to load into local Docker daemon
+- **`--load` limitation**: Can only load one platform at a time
+- **Cross-compilation**: ARM builds on x86_64 use QEMU emulation and will be slower (10-30 minutes for PIP layer)
+- **Native builds**: Building on native ARM hardware is much faster
+- **Platform specification**: Always use `--platform` flag with buildx to ensure correct architecture
 
 ## Deployment Scenarios
 
