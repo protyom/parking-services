@@ -115,6 +115,8 @@ Services defined:
 - `celery`: Task worker (uses host network mode)
 
 **Environment variables required in `.env`:**
+- `SECRET_KEY` (Django secret key - generate with `python -c 'from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())'`)
+- `DEBUG` (True/False - set to False in production)
 - `POSTGRES_USER`, `POSTGRES_DB`, `POSTGRES_PASSWORD`, `POSTGRES_PORT`
 - `REDIS_PASSWORD`
 - `APP_IMAGE` (Docker image name)

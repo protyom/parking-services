@@ -262,6 +262,8 @@ docker-compose down
 **Environment**: Requires `.env` file with:
 ```env
 APP_IMAGE=protyom/parking-monitoring:app
+SECRET_KEY=your-secret-key-here
+DEBUG=True
 POSTGRES_USER=postgres
 POSTGRES_DB=parking
 POSTGRES_PASSWORD=secretpassword
@@ -352,6 +354,8 @@ docker-compose down
 **Environment**: Requires `.env` with:
 ```env
 APP_IMAGE=protyom/parking-monitoring:app_arm
+SECRET_KEY=your-secret-key-here
+DEBUG=False
 POSTGRES_HOST=remote-db-host.example.com
 POSTGRES_USER=postgres
 POSTGRES_DB=parking

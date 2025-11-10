@@ -67,6 +67,8 @@ AI-powered parking monitoring system that uses computer vision to detect availab
    REDIS_PASSWORD=your_redis_password
 
    # Django
+   SECRET_KEY=your-secret-key-here-change-this-in-production
+   DEBUG=True
    ALLOWED_HOSTS=localhost,127.0.0.1
 
    # YOLO Model
@@ -75,6 +77,12 @@ AI-powered parking monitoring system that uses computer vision to detect availab
    # Camera Configuration (JSON)
    CAMERA_CONF={"cameras":[{"connection":"rtsp://camera1","sections":[{"name":"section_a","verbose_name":"Section A","capacity":20,"polygon":[[100,100],[200,100],[200,200],[100,200]]}]}]}
    ```
+
+   **Generate a secure SECRET_KEY for production:**
+   ```bash
+   python -c 'from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())'
+   ```
+   Copy the output and use it as your `SECRET_KEY` in `.env`.
 
 5. **Download YOLOv8 model**
    ```bash
